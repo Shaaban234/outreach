@@ -35,15 +35,26 @@ export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
-    const [s, l] = await Promise.all([
-      fetch("/api/stats").then((r) => r.json()),
-      fetch("/api/leads").then((r) => r.json()),
-    ]);
-    setStats(s);
-    setLeads(l);
-    setLoading(false);
+    try {
+      const [s, l] = await Promise.all([
+        fetch("/api/stats").then((r) => r.json()),
+        fetch("/api/leads").then((r) => r.json()),
+      ]);
+      setStats(s && typeof s === "object" && !("error" in s) ? s : null);
+      setLeads(Array.isArray(l) ? l : []);
+      setError(
+        (s && s.error) || (l && l.error) || null
+      );
+    } catch (err) {
+      setStats(null);
+      setLeads([]);
+      setError(err instanceof Error ? err.message : "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -80,6 +91,12 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-5 py-3 text-sm">
+            <span className="font-semibold">Couldn&apos;t load data:</span> {error}
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
